@@ -161,7 +161,6 @@ func TestLeaderElectionOverwriteNewerLogs2AB(t *testing.T) {
 	if sm1.Term != 2 {
 		t.Errorf("term = %d, want 2", sm1.Term)
 	}
-
 	// Node 1 campaigns again with a higher term. This time it succeeds.
 	n.send(pb.Message{From: 1, To: 1, MsgType: pb.MessageType_MsgHup})
 	if sm1.State != StateLeader {

@@ -62,7 +62,6 @@ func testUpdateTermFromMessage(t *testing.T, state StateType) {
 	}
 
 	r.Step(pb.Message{MsgType: pb.MessageType_MsgAppend, Term: 2})
-
 	if r.Term != 2 {
 		t.Errorf("term = %d, want %d", r.Term, 2)
 	}
@@ -189,12 +188,10 @@ func TestLeaderElectionInOneRoundRPC2AA(t *testing.T) {
 	}
 	for i, tt := range tests {
 		r := newTestRaft(1, idsBySize(tt.size), 10, 1, NewMemoryStorage())
-
 		r.Step(pb.Message{From: 1, To: 1, MsgType: pb.MessageType_MsgHup})
 		for id, vote := range tt.votes {
 			r.Step(pb.Message{From: id, To: 1, Term: r.Term, MsgType: pb.MessageType_MsgRequestVoteResponse, Reject: !vote})
 		}
-
 		if r.State != tt.state {
 			t.Errorf("#%d: state = %s, want %s", i, r.State, tt.state)
 		}
@@ -367,10 +364,9 @@ func TestLeaderStartReplication2AB(t *testing.T) {
 	r.becomeLeader()
 	commitNoopEntry(r, s)
 	li := r.RaftLog.LastIndex()
-
 	ents := []*pb.Entry{{Data: []byte("some data")}}
 	r.Step(pb.Message{From: 1, To: 1, MsgType: pb.MessageType_MsgPropose, Entries: ents})
-
+	
 	if g := r.RaftLog.LastIndex(); g != li+1 {
 		t.Errorf("lastIndex = %d, want %d", g, li+1)
 	}
@@ -412,7 +408,7 @@ func TestLeaderCommitEntry2AB(t *testing.T) {
 	for _, m := range r.readMessages() {
 		r.Step(acceptAndReply(m))
 	}
-
+	
 	if g := r.RaftLog.committed; g != li+1 {
 		t.Errorf("committed = %d, want %d", g, li+1)
 	}
@@ -747,7 +743,6 @@ func TestLeaderSyncFollowerLog2AB(t *testing.T) {
 		n.send(pb.Message{From: 3, To: 1, MsgType: pb.MessageType_MsgRequestVoteResponse, Term: term + 1})
 
 		n.send(pb.Message{From: 1, To: 1, MsgType: pb.MessageType_MsgPropose, Entries: []*pb.Entry{{}}})
-
 		if g := diffu(ltoa(lead.RaftLog), ltoa(follower.RaftLog)); g != "" {
 			t.Errorf("#%d: log diff:\n%s", i, g)
 		}
