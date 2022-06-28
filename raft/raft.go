@@ -17,6 +17,8 @@ package raft
 import (
 	"errors"
 
+	"math/rand"
+	"time"
 	pb "github.com/pingcap-incubator/tinykv/proto/pkg/eraftpb"
 )
 
@@ -177,28 +179,105 @@ func (r *Raft) sendAppend(to uint64) bool {
 
 // sendHeartbeat sends a heartbeat RPC to the given peer.
 func (r *Raft) sendHeartbeat(to uint64) {
-	// Your Code Here (2A).
+	msg := pb.Message{
+		MsgType: pb.MessageType_MsgHeartbeat,
+		To:      to,
+		From:    r.id,
+		Term:    r.Term,
+		Commit:  r.RaftLog.committed,
+		Entries: nil,
+	}
+	r.msgs = append(r.msgs, msg)
 }
 
+func (r *Raft) sendRequestVote(to uint64){
+	index ,err:=r.RaftLog.storage.LastIndex()
+	if err != nil{
+		panic("get index error")
+	}
+	term ,err2 :=r.RaftLog.storage.Term(index)
+	msg :=pb.Message{
+		MsgType: pb.MessageType_MsgRequestVote
+		To:      to,
+		From:    r.id,
+		Term:    r.Term,
+		LogTerm: term,
+		Index:   index,
+		Entries: nil,
+	}
+}
 // tick advances the internal logical clock by a single tick.
 func (r *Raft) tick() {
-	// Your Code Here (2A).
+	switch r.State{
+	case StateLeader:
+		if r.heartbeatElapsed==r.heartbeatTimeout{
+			r.heartbeatElapsed=0
+			for id,_ :=range r.Prs{
+				sendHeartbeat(id)
+			}
+		}else{
+			r.heartbeatElapsed++
+		}
+	case StateFollower:
+		if r.electionElapsed == r.electionTimeout{
+			r.becomeCandidate()
+		}else {
+			r.heartbeatElapsed++
+		}
+	case StateCandidate:
+		if r.electionElapsed == r.electionTimeout{
+			r.becomeCandidate()
+		}else{
+			r.electionElapsed++
+		}
+	}
 }
 
 // becomeFollower transform this peer's state to Follower
 func (r *Raft) becomeFollower(term uint64, lead uint64) {
-	// Your Code Here (2A).
+	r.State=StateFollower
+	r.Term=term
+	r.Vote=None
+	r.Lead=lead
+	r.heartbeatElapsed=0
+	r.electionElapsed=0
+	r.votes=nil
 }
 
 // becomeCandidate transform this peer's state to candidate
 func (r *Raft) becomeCandidate() {
-	// Your Code Here (2A).
+	r.State=StateCandidate
+	r.Vote=r.id
+	r.Term++
+	r.Lead = None
+	r.heartbeatElapsed=0
+	for _,peer :=range r.votes{
+		peer=false
+	}
+	r.votes[r.id]=true
+	r.electionElapsed=0
+	rand.Seed(time.Now().UnixNano())
+	r.electionElapsed+=rand.Intn(r.electionTimeout/2)
+	for id,_ :=range r.Prs{
+		r.sendRequestVote(id)
+	}
 }
-
 // becomeLeader transform this peer's state to leader
 func (r *Raft) becomeLeader() {
-	// Your Code Here (2A).
-	// NOTE: Leader should propose a noop entry on its term
+	r.State = StateLeader
+	r.heartbeatElapsed = 0
+	r.electionElapsed = 0
+	r.Lead = r.id
+	r.vote=r.Lead
+
+	index ,err :=r.RaftLog.LastIndex()
+	if err != nil{
+		panic("get index in error")
+	}
+	for id,peer := range r.Prs{
+		peer.Match=0
+		peer.Next=index+1
+	}
 }
 
 // Step the entrance of handle message, see `MessageType`
