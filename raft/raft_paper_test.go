@@ -364,10 +364,9 @@ func TestLeaderStartReplication2AB(t *testing.T) {
 	r.becomeLeader()
 	commitNoopEntry(r, s)
 	li := r.RaftLog.LastIndex()
-
 	ents := []*pb.Entry{{Data: []byte("some data")}}
 	r.Step(pb.Message{From: 1, To: 1, MsgType: pb.MessageType_MsgPropose, Entries: ents})
-
+	
 	if g := r.RaftLog.LastIndex(); g != li+1 {
 		t.Errorf("lastIndex = %d, want %d", g, li+1)
 	}
@@ -409,7 +408,7 @@ func TestLeaderCommitEntry2AB(t *testing.T) {
 	for _, m := range r.readMessages() {
 		r.Step(acceptAndReply(m))
 	}
-
+	
 	if g := r.RaftLog.committed; g != li+1 {
 		t.Errorf("committed = %d, want %d", g, li+1)
 	}
@@ -744,7 +743,6 @@ func TestLeaderSyncFollowerLog2AB(t *testing.T) {
 		n.send(pb.Message{From: 3, To: 1, MsgType: pb.MessageType_MsgRequestVoteResponse, Term: term + 1})
 
 		n.send(pb.Message{From: 1, To: 1, MsgType: pb.MessageType_MsgPropose, Entries: []*pb.Entry{{}}})
-
 		if g := diffu(ltoa(lead.RaftLog), ltoa(follower.RaftLog)); g != "" {
 			t.Errorf("#%d: log diff:\n%s", i, g)
 		}
