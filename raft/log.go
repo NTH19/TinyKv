@@ -44,7 +44,7 @@ type RaftLog struct {
 
 	// all entries that have not yet compact.
 	innerentries []pb.Entry
-	entries []pb.Entry
+	entries      []pb.Entry
 	// the incoming unstable snapshot, if any.
 	// (Used in 2C)
 	pendingSnapshot *pb.Snapshot
@@ -53,24 +53,22 @@ type RaftLog struct {
 // newLog returns log using the given storage. It recovers the log
 // to the state that it just commits and applies the latest snapshot.
 func newLog(storage Storage) *RaftLog {
-	firstIndex,_:=storage.FirstIndex()
-	lastIndex,_ :=storage.LastIndex()
-	hs,_ ,_:=storage.InitialState()
-	entry :=make([]pb.Entry,1)
-	entries,_:=storage.Entries(firstIndex,lastIndex+1)
-	if(entries != nil){
-		for _,v:=range entries{
-			entry=append(entry,v)
+	firstIndex, _ := storage.FirstIndex()
+	lastIndex, _ := storage.LastIndex()
+	entry := make([]pb.Entry, 1)
+	entries, _ := storage.Entries(firstIndex, lastIndex+1)
+	if entries != nil {
+		for _, v := range entries {
+			entry = append(entry, v)
 		}
 	}
-	outentries,_ :=storage.Entries(firstIndex,lastIndex+1)
+	outentries, _ := storage.Entries(firstIndex, lastIndex+1)
 	return &RaftLog{
-		storage:storage,
-		applied:0,
-		innerentries:entry,
-		entries:outentries,
-		stabled:lastIndex,
-		committed:hs.Commit,
+		storage:      storage,
+		applied:      0,
+		innerentries: entry,
+		entries:      outentries,
+		stabled:      lastIndex,
 	}
 }
 
@@ -83,7 +81,7 @@ func (l *RaftLog) maybeCompact() {
 
 // unstableEntries return all the unstable entries
 func (l *RaftLog) unstableEntries() []pb.Entry {
-	if(len(l.innerentries)==1){
+	if len(l.innerentries) == 1 {
 		return nil
 	}
 	return l.innerentries[l.stabled-l.FirstIndex()+1:]
@@ -91,7 +89,7 @@ func (l *RaftLog) unstableEntries() []pb.Entry {
 
 // nextEnts returns all the committed but not applied entries
 func (l *RaftLog) nextEnts() (ents []pb.Entry) {
-	if(len(l.innerentries)==1){
+	if len(l.innerentries) == 1 {
 		return nil
 	}
 	return l.innerentries[l.applied-l.FirstIndex()+1 : l.committed-l.FirstIndex()+1]
@@ -104,12 +102,13 @@ func (l *RaftLog) LastIndex() uint64 {
 func (l *RaftLog) FirstIndex() uint64 {
 	return l.innerentries[0].Index
 }
+
 // Term return the term of the entry in the given index
 func (l *RaftLog) Term(i uint64) (uint64, error) {
-	return l.innerentries[i-l.FirstIndex()].Term,nil
+	return l.innerentries[i-l.FirstIndex()].Term, nil
 }
-func (l *RaftLog) AfterChange(){
-	if(len(l.innerentries)!=1){
-		l.entries=l.innerentries[1:]
+func (l *RaftLog) AfterChange() {
+	if len(l.innerentries) != 1 {
+		l.entries = l.innerentries[1:]
 	}
 }
